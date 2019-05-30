@@ -68,13 +68,13 @@ def mtg_open_json(fname, verbose = False):
 
 # filters to ignore some undesirable cards, only used when opening json
 def default_exclude_sets(cardset):
-    return cardset == 'Unglued' or cardset == 'Unhinged' or cardset == 'Celebration'
+    return cardset in ['Unglued', 'Unhinged', 'Celebration', 'Unstable', 'Happy Holidays', 'HasCon 2017']
 
 def default_exclude_types(cardtype):
     return cardtype in ['conspiracy']
 
 def default_exclude_layouts(layout):
-    return layout in ['token', 'plane', 'scheme', 'phenomenon', 'vanguard']
+    return layout in ['token', 'plane', 'scheme', 'phenomenon', 'vanguard', 'planar']
 
 # centralized logic for opening files of cards, either encoded or json
 def mtg_open_file(fname, verbose = False,

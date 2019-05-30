@@ -83,6 +83,8 @@ def text_pass_2_cardname(s, name):
         'rashka',
         'phage',
         'shimatsu',
+        'hazoret',
+        'rakdos',
         # random and arbitrary: they have a last name, 1996 world champion, etc.
         'world champion',
         'axelrod',
@@ -110,8 +112,185 @@ def text_pass_2_cardname(s, name):
 
     return s
 
+# convert word numbers, such as for quantity of tokens or drawing cards, to numbers
+# so they can, in turn, be converted to unary.
+# NOTE: This is messy due to the many uses of a in English. Only some are referring to
+# the number 1 as a specific quantity instead of a threshold.
+def text_pass_3a_word_numbers(s):
+    # Handle Zero
+    # Take some instances of 'no' and quantify them as 0
+    s = s.replace(' gains no life', ' gains 0 life')
+    s = s.replace(' share no ', ' share 0 ')
+    s = s.replace(' no cards', ' 0 cards')
+    s = s.replace('if no spells', 'if 0 spells')
+    s = s.replace(' control no ', ' control 0 ')
+    s = s.replace('if no creatures', 'if 0 creatures')
+    s = s.replace('there are no ', 'there are 0 ')
+    # Triggers for having no counters of a certain type.
+    s = s.replace(r' has no ((\w+)|([\+\-]\d+\/[\+\-]\d+)) counters', r'has 0 \1 counters')
 
-def text_pass_3_unary(s):
+    # Start by replacing one. Do this first to ensure we keep modal spells/abilities separate from other things
+    s = s.replace(' one ', ' 1 ')
+    s = s.replace(' one, ', ' 1, ')
+    # undo "one or more"...
+    s = s.replace(' 1 or more ', ' one or more ')
+    # Then undo any other "choose one" effects. This breaks the choose encoding otherwise.
+    s = s.replace('choose 1 ', 'choose one ')
+    s = s.replace('opponent chooses 1 ~', 'opponent chooses one ~')
+    # Then reapply "Choose one of them" clauses
+    s = s.replace('choose one of ', 'choose 1 of ')
+    # And lets hit "One or two"
+    s = s.replace('one or two ', '1 or 2 ')
+    # Handle Krark's Thumb
+    s = s.replace(' ignore one', ' ignore 1')
+    # Handle "that many plus one"
+    s = s.replace(' plus one', ' plus 1')
+    # And a replacement effect "instead of one"
+    s = s.replace(' instead of one', ' instead of 1')
+    # Also changes of maximum hand size.
+    s = s.replace(' reduced by one', ' reduced by 1')
+    s = s.replace(' increased by one', ' increased by 1')
+    # Also handle the opponent choosing one of several cards you reveal.
+    s = s.replace(' opponent chooses one.', ' opponent chooses 1.')
+
+    # Then we do "a", since it also means 1
+    s = s.replace(' a ', ' 1 ')
+    # Undo "It's still a land." phrase, since we want this usage of a to stay.
+    s = s.replace(' still 1 ', ' still a ')
+    # Get "Equip only as a sorcery" phrase, too.
+    s = s.replace(' as 1 ', ' as a ')
+    # Things like "from a graveyard" should also be undone
+    s = s.replace(' from 1 ', ' from a ')
+    # And then "anytime you could cast a sorcery" needs undoing, too.
+    s = s.replace(' cast 1 ', ' cast a ')
+    s = s.replace(' casts 1 ', ' casts a ')
+    # And then "controls a" texts also stat
+    s = s.replace(' control 1 ', ' control a ')
+    s = s.replace(' controls 1 ', ' controls a ')
+    # "becomes a" is also not needed to change
+    s = s.replace(' becomes 1 ', ' becomes a ')
+    s = s.replace(' become 1 ', ' become a ')
+    # "into a" also needs to use "a", not 1
+    s = s.replace(' into 1 ', ' into a ')
+    # Banding and a few other things.
+    s = s.replace(' in 1 ', ' in a ')
+    # "Whenever a" triggers should also stay as "a", not "1"
+    s = s.replace('whenever 1 ', 'whenever a ')
+    # "becomes the target of a ..." also should stay using "a"
+    s = s.replace(' of 1 ', ' of a ')
+    # also correct combat damage to a player/creature
+    s = s.replace(' to 1 ', ' to a ')
+    # Except when you are targeting up to one
+    s = s.replace(' up to a ', ' up to 1 ')
+    # Also avoid a player controls being a 1
+    s = s.replace(' 1 player control', ' a player control')
+    # other than a should also be handled
+    s = s.replace('other than 1 ', 'other than a ')
+    # fix "with a" clauses
+    s = s.replace(' with 1 ', ' with a ')
+    # Enter the battlefield with clauses should use 1, though
+    s = s.replace(' battlefield with a ', ' battlefield with 1 ')
+    # Or effects are usually triggers, so use "a" as a threshold quantifier
+    s = s.replace(' or 1 ', ' or a ')
+    # Except searching effects, which are usually a card or another card.
+    s = s.replace(' card or a ', ' card or 1 ')
+    # 'That's' clauses are usually copies, so numeric quantity is useless.
+    s = s.replace(' that\'s 1 ', ' that\'s a ')
+    # "A source" seems to be better described using "a"
+    s = s.replace(' 1 source ', ' a source ')
+    # "Is a" clauses really are more clear without encoding "a"
+    s = s.replace(' is 1 ', ' is a ')
+    # "it's a" clauses should be caught, too
+    s = s.replace(" it's 1 ", " it's a ")
+    # "that a land" clauses and a few other "that a" clauses should really use "a"
+    s = s.replace(" that 1 ", " that a ")
+    # Handle if conditions that really want one or more to be true.
+    s = s.replace(" if 1 ", " if a ")
+    # "Reveals a number of" clauses should not be quantified.
+    s = s.replace('reveals 1 number of ', 'reveals a number of ')
+    s = s.replace('reveal 1 number of ', 'reveal a number of ')
+
+    # Handle an, for when the item following a makes a vowel sound
+    # Do this in pieces, since it seems to be select cases that need it.
+    # Extra turns
+    s = s.replace('take an ', 'take 1 ');
+    # addtional card draw
+    s = s.replace(' draws an ',' draws 1 ')
+    # Extra combat phases
+    s = s.replace(' is an additional ', ' is 1 additional ')
+    # Extra main phases after extra combat phases/
+    s = s.replace(' followed by an ', ' followed by 1 ')
+    # Extra blocks per combat
+    s = s.replace(' block an ', ' block 1 ')
+    # Undo hundred-handed one and convert the actual number extra while we're here.
+    s = s.replace(' block 1 additional ninety-nine ', ' block an additional 99 ')
+    # Handle choosing a single item, usually an opponent. But its one, so encode it
+    s = s.replace(' choose an ', ' choose 1 ')
+    s = s.replace(' chooses an ', ' chooses 1 ')
+    # Handle an enchantment or artifact in a list of items chosen
+    # This requires a regular expression to actually do, since we sometimes have
+    # a list of conditions where the "an" stands for "at least one", and sometimes
+    # we are choosing exactly one of the type.
+    s = re.sub(r' chooses (.*), an ', r' chooses \1, 1 ', s)
+    # Handle sacrifice effects
+    s = s.replace('sacrifice an ', 'sacrifice 1 ')
+    # Handle putting things onto permanents and/or battlefields
+    s = s.replace(' put an ', ' put 1 ')
+    # Handle X/X and 8/8 tokens, since they use "an"
+    s = s.replace(' create an ', ' create 1 ')
+    # Handle things that enter the "battlefield with an" counter
+    s = s.replace(' battlefield with an ', ' battlefield with 1 ')
+    # Searching library for a single card
+    s = s.replace(' library for an ', ' library for 1 ')
+    # Play an additional can be play 1 additional
+    s = s.replace('play an additional', 'play 1 additional')
+
+    # Then we move on to other numbers
+    s = s.replace(' two ', ' 2 ')
+    s = s.replace(' two, ', ' 2, ')
+    # Undo "If two or more XXXX are tied..." scenarios"
+    s = s.replace('. if 2 or more ', '. if two or more ')
+    # Replace choose two as well, to ensure the special choose encoding works.
+    s = s.replace('choose 2 ', 'choose two ')
+    # Except Seal of the Guildpact has us choose two colors. This can be quantified.
+    s = s.replace('choose two colors', 'choose 2 colors')
+    # And also choose two target should be quantified.
+    s = s.replace('choose two target', 'choose 2 target')
+    # And choose two of those
+    s = s.replace('choose two of ', 'choose 2 of ') 
+
+    # About two times three is at the end of a statement. We need to handle those.
+    s = s.replace(' three ', ' 3 ')
+    s = s.replace(' three.', ' 3.')
+
+    # and some hand size and other modifiers also occur at statement ends for four.
+    s = s.replace(' four ', ' 4 ')
+    s = s.replace(' four.', ' 4.')
+
+    # Monocolor god devotions for Theros gods has a comma after five.
+    s = s.replace(' five ', ' 5 ')
+    s = s.replace(' five,', ' 5,')
+
+    s = s.replace(' six ', ' 6 ')
+
+    # Jin-Gitaxias and multicolored Theros gods have punctuation after the number
+    s = s.replace(' seven ', ' 7 ')
+    s = s.replace(' seven,', ' 7,')
+    s = s.replace(' seven.', ' 7.')
+
+    s = s.replace(' eight ', ' 8 ')
+    s = s.replace(' nine ', ' 9 ')
+    s = s.replace(' ten ', ' 10 ')
+    s = s.replace(' twelve ', ' 12 ')
+    s = s.replace(' thirteen ', ' 13 ')
+    s = s.replace(' fifteen ', ' 15 ')
+    s = s.replace(' twenty ', ' 20 ')
+    s = s.replace(' twenty-six ', ' 26 ')
+    # Hundred-handed one is now handled above
+    # s = s.replace(' ninety-nine ', ' 99 ')
+    return s
+
+def text_pass_3b_unary(s):
     return utils.to_unary(s)
 
 
@@ -316,6 +495,21 @@ def text_pass_5_counters(s):
         'shred counter',
         'pupa counter',
         'crystal counter',
+        'egg counter',
+        'plot counter',
+        'hit counter',
+        'brick counter',
+        'unity counter',
+        'prey counter',
+        'slumber counter',
+        'vortex counter',
+        'landmark counter',
+        'hour counter',
+        'isolation counter',
+        'fury counter',
+        'silver counter',
+        'experience counter',
+        'spite counter'
     ]
     usedcounters = []
     for countername in allcounters:
@@ -506,6 +700,7 @@ def text_pass_11_linetrans(s):
             line = line.replace('; and', ', and') # wonky protection
             line = line.replace('; from', ', from') # wonky protection
             line = line.replace('upkeep;', 'upkeep,') # wonky protection
+            line = line.replace('; land; or planeswalker', ', land, or planeswalker') # Imprisoned in the Moon
             sublines = line.split(';')
             for subline in sublines:
                 subline = subline.strip()
