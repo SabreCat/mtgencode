@@ -340,6 +340,7 @@ def text_pass_4b_x(s):
 def text_pass_4c_abilitywords(s):
     # Ability words are flavor text. We can discard them
     abilitywords = [
+	'addendum',
 	'battalion',
 	'bloodrush',
 	'channel',
@@ -350,6 +351,8 @@ def text_pass_4c_abilitywords(s):
 	"council's dilemma",
 	'delirium',
 	'domain',
+	'eminence',
+	'enrage',
 	'fateful hour',
 	'ferocious',
 	'formidable',
@@ -368,11 +371,13 @@ def text_pass_4c_abilitywords(s):
 	'radiance',
 	'raid',
 	'rally',
+	'revolt',
 	'spell mastery',
 	'strive',
 	'sweep',
 	'tempting offer',
 	'threshold',
+	'undergrowth',
 	'will of the council',
     ]
 
